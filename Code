@@ -1,0 +1,60 @@
+from google.colab import drive
+drive.mount('/gdrive/')
+
+%cd /gdrive/My Drive/Face
+/gdrive/My Drive/Face
+
+ls
+
+pip install face_recognition
+
+import cv2
+from google.colab.patches import cv2_imshow
+import numpy as np
+import os, shutil
+
+import face_recognition as fr
+
+def get_encoded_faces():
+  encoded = {}
+  for dir_path, dname, fnames in os.walk("./DB Faces"):
+    for f in fnames:
+      if f.endswith(".jpg"):
+        face = fr.load_image_file("./DB Faces/" + f)
+        encoding = fr.face_encodings(face)[0]
+        encoded[f.split(".")[0]] = encoding
+  return encoded
+
+def classify_face(image):
+  faces = get_encoded_faces()
+  faces_encoded = list(faces.values())
+  known_face_names = list(faces.keys())
+
+  img = cv2.imread(image)
+  face_locations = fr.face_locations(img)
+  unknown_face_en = fr.face_encodings(img, face_locations)
+  face_names = [] 
+  for face_encoding in unknown_face_en:
+    name = "Unknown"
+    matches = fr.compare_faces(faces_encoded, face_encoding)
+    
+    face_distances = fr.face_distance(faces_encoded, face_encoding)
+    best_match_index = np.argmin(face_distances)
+    if matches[best_match_index]:
+      name = known_face_names[best_match_index]
+
+    face_names.append(name)
+
+    for (top, right, bottom, left), name in zip(face_locations, face_names):
+        cv2.rectangle(img, (left - 20, top - 20), (right + 20, bottom + 20), 
+                      (255, 0, 0), 2)
+        cv2.rectangle(img, (left - 20, bottom - 15), (right + 20, bottom + 20), 
+                      (255, 0, 0), cv2.FILLED)
+        cv2.putText(img, name, (left-20, bottom+15), cv2.FONT_HERSHEY_DUPLEX,
+                    0.5, (255.255, 255), 1)
+        
+  while True:
+    cv2_imshow(img)
+    return face_names
+
+classify_face("Ashutosh Ravi.jpg")
